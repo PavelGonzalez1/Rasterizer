@@ -56,7 +56,7 @@ void Drawer::loadSubData(int count,std::vector<Math::vec3>& pos, std::vector<Mat
 		
 
 		if (colInd == -1 or (i * 3 + 2) >= subDatas[colInd].size())
-			col.push_back({ 0, 0, 0 });
+			col.push_back({ 255, 255, 255 });
 		else
 			col.push_back({ subDatas[colInd][i * 3],subDatas[colInd][i * 3 + 1],subDatas[colInd][i * 3 + 2] });
 	}
@@ -77,7 +77,7 @@ void Drawer::Points(const int count)
 
 	for (int i{}; i < count; i++)
 	{
-		pixels[NDCtoPoint(positionData[i])] = colorData[i];
+		drawToMap(positionData[i], colorData[i]);
 	}
 }
 /// <summary>
@@ -104,10 +104,19 @@ void Drawer::Lines(int count)
 			float factor = j/distance ; // percent of color outputed from starting vertex; 
 			Math::vec3 curColor = colorData[i] * (1.0f - factor) + colorData[i+1] * factor;
 
-			pixels[NDCtoPoint(positionData[i+1]+lineVec * factor)] = curColor;
+			Math::vec3 curPoint = positionData[i + 1] + lineVec * factor;
+
+
+			drawToMap(curPoint, curColor);
 		}
 
 	}
+}
+float Drawer::calcZ(float x, float y,Math::vec3 &normal,Math::vec3 &point)
+{
+	
+	return (normal.x * (x - point.x) + normal.y * (y - point.y) - normal.z * point.z) / (-normal.z );
+	
 }
 /// <summary>
 /// sets the pixels of triangles to the drawer pixel map
@@ -131,20 +140,26 @@ void Drawer::Triangles( int count)
 		float endX = std::max(positionData[i].x,  std::max(positionData[i + 1].x, positionData[i + 2].x));
 		float endY = std::max(positionData[i].y,  std::max(positionData[i + 1].y, positionData[i + 2].y));
 
-		float wholeArea = (positionData[i + 2] - positionData[i]).cross(positionData[i + 1] - positionData[i]).magnitude()/2.0f;
-		
+		float maxZ = std::max(positionData[i].z, std::max(positionData[i + 1].z, positionData[i + 2].z));
+
+		Math::vec3 normalVec = (positionData[i + 2] - positionData[i]).cross(positionData[i + 1] - positionData[i]);
+		float wholeArea = normalVec.magnitude()/2.0f;
+		normalVec = normalVec.normalize();
+
 		for (float y{ startY }; y < endY; y += drawingPercision)
 		{
 			for (float x{ startX }; x < endX; x += drawingPercision)
 			{
-				const Math::vec3 curPoint = { x,y,0 };
-
+				Math::vec3 curPoint = { x,y,calcZ(x,y,normalVec, positionData[i])};
 				//calc the vector from the current point to each vertex
 				
 				Math::vec3 lineVec1 = positionData[i] - curPoint;
 				Math::vec3 lineVec2 = positionData[i+1] - curPoint;
 				Math::vec3 lineVec3 = positionData[i+2] - curPoint;
-
+				if (curPoint.z == 1.0f)
+				{
+					std::cout << curPoint.z << std::endl;
+				}
 				//then calc the area produced for every combination of two lines (cross product / 2)
 				// the area / wholeArea is the percent of color that point can have
 
@@ -156,7 +171,7 @@ void Drawer::Triangles( int count)
 				if (factor1 + factor2 + factor3 <= 1.0f)
 				{
 					Math::vec3 curColor = colorData[i] * factor1 + colorData[i + 1] * factor2 + colorData[i + 2] * factor3;
-					pixels[NDCtoPoint(curPoint)] = curColor;
+					drawToMap(curPoint, curColor);
 				}
 
 			}
@@ -170,30 +185,44 @@ std::string Drawer::getError()
 	return this->errorMessage;
 }
 
-void Drawer::writeImageToBMP(std::string name)
+void Drawer::writeImageToBMP(const char* name)
 {
 	const unsigned short bitDepth = 24;
 
 	BMP* image = BMP_Create(m_width, m_height, bitDepth);
+	for (int y{}; y < m_height; y++)
+	{
+		for (int x{}; x < m_width; x++)
+		{
+			vertexData pixel = pixels[y * m_width + x];
+			BMP_SetPixelRGB(image, x, y, pixel.color.r, pixel.color.g, pixel.color.b);
+		}
+	}
+	
+	
 
-	for (const auto& pixel : pixels)
-		BMP_SetPixelRGB(image, pixel.first.x, pixel.first.y, pixel.second.r, pixel.second.g, pixel.second.b);
 
-
-	BMP_WriteFile(image, (name + ".bmp").c_str());
+	BMP_WriteFile(image, name );
 	BMP_Free(image);
 }
 
-Point Drawer::NDCtoPoint(Math::vec3 NDC)
+int Drawer::NDCtoPoint(Math::vec3 NDC)
 {
 
-	float factorX = (NDC.x + 0.99f) / 2.0f;
-	float factorY = (NDC.y - 0.99f) / -2.0f;
+	float factorX = (NDC.x + (1.0f - drawingPercision)) / 2.0f;
+	float factorY = (NDC.y - (1.0f - drawingPercision)) / -2.0f;
 
 	int posX = m_width * factorX;
 	int posY = m_height * factorY;
 
-	return { posX,posY };
+	return posX + posY * m_width;
 
 	
+}
+void Drawer::drawToMap(Math::vec3 pos, Math::vec3 col)
+{
+	if (pos.z > pixels[NDCtoPoint(pos)].z)
+	{
+		pixels[NDCtoPoint(pos)] = { pos.z,col };
+	}
 }
