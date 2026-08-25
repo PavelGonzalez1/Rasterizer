@@ -34,7 +34,7 @@ void Drawer::SubData(std::vector<Math::vec3> data, DataTypes type)
 /// defaults to 0,0,0 if there is an error
 /// could crash everything/ log an error message, but 
 /// this implementation sort of emulates my understanding of openGL
-void Drawer::loadSubData(int count,std::vector<Math::vec3>& pos, std::vector<Math::vec3>& col)
+void Drawer::loadSubData(int count,std::vector<Math::vec4>& pos, std::vector<Math::vec3>& col)
 {
 	int posInd = -1;
 	int colInd = -1;
@@ -50,9 +50,15 @@ void Drawer::loadSubData(int count,std::vector<Math::vec3>& pos, std::vector<Mat
 	for (int i{}; i < count; i++)
 	{
 		if (posInd == -1 or (i * 3 + 2) >= subDatas[posInd].size())
-			pos.push_back({ 0, 0, 0 });
+			pos.push_back({ 0, 0, 0 ,0});
 		else
-			pos.push_back({ subDatas[posInd][i * 3],subDatas[posInd][i * 3 + 1],subDatas[posInd][i * 3 + 2] });
+		{
+			Math::vec4 position = projection * model * Math::vec4( subDatas[posInd][i * 3],subDatas[posInd][i * 3 + 1],subDatas[posInd][i * 3 + 2],1.0f );
+			
+			position = position.perspectiveDivide();
+			
+			pos.push_back(position);
+		}
 		
 
 		if (colInd == -1 or (i * 3 + 2) >= subDatas[colInd].size())
@@ -70,7 +76,7 @@ void Drawer::loadSubData(int count,std::vector<Math::vec3>& pos, std::vector<Mat
 /// <param name="count">count of verticies</param>
 void Drawer::Points(const int count)
 {
-	std::vector<Math::vec3> positionData;
+	std::vector<Math::vec4> positionData;
 	std::vector<Math::vec3> colorData;
 
 	loadSubData(count, positionData, colorData);
@@ -84,35 +90,35 @@ void Drawer::Points(const int count)
 /// sets the pixels of lines to the drawer pixel map
 /// </summary>
 /// <param name="count">count of verticies</param>
-void Drawer::Lines(int count)
-{
-	std::vector<Math::vec3> positionData;
-	std::vector<Math::vec3> colorData;
-
-	loadSubData(count, positionData, colorData);
-
-	
-	//every 2 points calc the distance and the difference vector  
-	count -= count % 2;
-	for (int i{}; i < count; i+=2)
-	{
-		Math::vec3 lineVec = positionData[i] - positionData[i + 1];
-		const float distance = abs(lineVec.magnitude());
-
-		for (float j{}; j <  distance; j += drawingPercision)
-		{
-			float factor = j/distance ; // percent of color outputed from starting vertex; 
-			Math::vec3 curColor = colorData[i] * (1.0f - factor) + colorData[i+1] * factor;
-
-			Math::vec3 curPoint = positionData[i + 1] + lineVec * factor;
-
-
-			drawToMap(curPoint, curColor);
-		}
-
-	}
-}
-float Drawer::calcZ(float x, float y,Math::vec3 &normal,Math::vec3 &point)
+//void Drawer::Lines(int count)
+//{
+//	std::vector<Math::vec4> positionData;
+//	std::vector<Math::vec3> colorData;
+//
+//	loadSubData(count, positionData, colorData);
+//
+//	
+//	//every 2 points calc the distance and the difference vector  
+//	count -= count % 2;
+//	for (int i{}; i < count; i+=2)
+//	{
+//		Math::vec3 lineVec = positionData[i] - positionData[i + 1];
+//		const float distance = abs(lineVec.magnitude());
+//
+//		for (float j{}; j <  distance; j += drawingPercision)
+//		{
+//			float factor = j/distance ; // percent of color outputed from starting vertex; 
+//			Math::vec3 curColor = colorData[i] * (1.0f - factor) + colorData[i+1] * factor;
+//
+//			Math::vec3 curPoint = positionData[i + 1] + lineVec * factor;
+//
+//
+//			drawToMap(curPoint, curColor);
+//		}
+//
+//	}
+//}
+float Drawer::calcZ(float x, float y,Math::vec3 &normal,const Math::vec3 &point)
 {
 	
 	return (normal.x * (x - point.x) + normal.y * (y - point.y) - normal.z * point.z) / (-normal.z );
@@ -124,7 +130,7 @@ float Drawer::calcZ(float x, float y,Math::vec3 &normal,Math::vec3 &point)
 /// <param name="count">count of verticies</param>
 void Drawer::Triangles( int count)
 {
-	std::vector<Math::vec3> positionData;
+	std::vector<Math::vec4> positionData;
 	std::vector<Math::vec3> colorData;
 
 	loadSubData(count, positionData, colorData);
@@ -140,36 +146,33 @@ void Drawer::Triangles( int count)
 		float endX = std::max(positionData[i].x,  std::max(positionData[i + 1].x, positionData[i + 2].x));
 		float endY = std::max(positionData[i].y,  std::max(positionData[i + 1].y, positionData[i + 2].y));
 
-		float maxZ = std::max(positionData[i].z, std::max(positionData[i + 1].z, positionData[i + 2].z));
-
-		Math::vec3 normalVec = (positionData[i + 2] - positionData[i]).cross(positionData[i + 1] - positionData[i]);
+		// calculate the normal to calc the area to determine if a point is in the triangle and to find the plane the triangle is in
+		Math::vec3 normalVec = (positionData[i + 2].xyz() - positionData[i].xyz()).cross(positionData[i + 1].xyz() - positionData[i].xyz());
+		
 		float wholeArea = normalVec.magnitude()/2.0f;
-		normalVec = normalVec.normalize();
+		normalVec = normalVec.normalize(); 
 
-		for (float y{ startY }; y < endY; y += drawingPercision)
+		for (float y{ startY }; y <= endY; y += drawingPercision)
 		{
-			for (float x{ startX }; x < endX; x += drawingPercision)
+			for (float x{ startX }; x <= endX; x += drawingPercision)
 			{
-				Math::vec3 curPoint = { x,y,calcZ(x,y,normalVec, positionData[i])};
+				Math::vec4 curPoint = { x,y,calcZ(x,y,normalVec, positionData[i].xyz()) , 1.0};
 				//calc the vector from the current point to each vertex
 				
-				Math::vec3 lineVec1 = positionData[i] - curPoint;
-				Math::vec3 lineVec2 = positionData[i+1] - curPoint;
-				Math::vec3 lineVec3 = positionData[i+2] - curPoint;
-				if (curPoint.z == 1.0f)
-				{
-					std::cout << curPoint.z << std::endl;
-				}
+				Math::vec3 lineVec1 = positionData[i].xyz()   - curPoint.xyz();
+				Math::vec3 lineVec2 = positionData[i+1].xyz() - curPoint.xyz();
+				Math::vec3 lineVec3 = positionData[i+2].xyz() - curPoint.xyz();
 				//then calc the area produced for every combination of two lines (cross product / 2)
 				// the area / wholeArea is the percent of color that point can have
 
 				float factor1 = lineVec2.cross(lineVec3).magnitude() / 2.0f / wholeArea;
 				float factor2 = lineVec3.cross(lineVec1).magnitude() / 2.0f / wholeArea;
 				float factor3 = lineVec1.cross(lineVec2).magnitude() / 2.0f / wholeArea;
-
+				
 				// if the percent of every color is greater than 100% the point is outside the triangle
 				if (factor1 + factor2 + factor3 <= 1.0f)
 				{
+					curPoint.w = positionData[i].w * factor1 + positionData[i + 1].w * factor2 + positionData[i + 2].w * factor3;
 					Math::vec3 curColor = colorData[i] * factor1 + colorData[i + 1] * factor2 + colorData[i + 2] * factor3;
 					drawToMap(curPoint, curColor);
 				}
@@ -206,9 +209,10 @@ void Drawer::writeImageToBMP(const char* name)
 	BMP_Free(image);
 }
 
-int Drawer::NDCtoPoint(Math::vec3 NDC)
+int Drawer::NDCtoPoint(Math::vec4 NDC)
 {
-
+	
+	// [-1,1] -> [0,1];
 	float factorX = (NDC.x + (1.0f - drawingPercision)) / 2.0f;
 	float factorY = (NDC.y - (1.0f - drawingPercision)) / -2.0f;
 
@@ -219,10 +223,17 @@ int Drawer::NDCtoPoint(Math::vec3 NDC)
 
 	
 }
-void Drawer::drawToMap(Math::vec3 pos, Math::vec3 col)
-{
+void Drawer::drawToMap(Math::vec4 pos, Math::vec3 col)
+{	
+
+	
+	
+	
+	if (pos.x < -1 or pos.x > 1 or pos.y > 1 or pos.y < -1)return;
+
 	if (pos.z > pixels[NDCtoPoint(pos)].z)
 	{
+		
 		pixels[NDCtoPoint(pos)] = { pos.z,col };
 	}
 }

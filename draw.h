@@ -25,7 +25,7 @@ enum DataTypes
 };
 struct vertexData
 {
-	float z =  -1 * std::numeric_limits<float>::max();
+	float z = -1* std::numeric_limits<int>::max();
 	Math::vec3 color;
 };
 
@@ -48,21 +48,26 @@ public:
 
 	void writeImageToBMP(const char *name);
 	std::string getError();
+
+	Math::mat4 model{};
+	Math::mat4 projection{};
 private:
 
 	const static int MAX_SUBDATA{ 2 };
 	const int m_height;
 	const int m_width;
 	float drawingPercision;
+
 	std::array<std::vector<float>, MAX_SUBDATA> subDatas;
 
 	std::array<DataTypes, MAX_SUBDATA> subDataType;
 	std::string errorMessage;
 	int nextSubData{};
 	std::vector<vertexData> pixels;
-	void loadSubData(int count, std::vector<Math::vec3>& pos, std::vector<Math::vec3>& col);
-	void drawToMap(Math::vec3 pos, Math::vec3 col);
-	float calcZ(float x, float y, Math::vec3& normal, Math::vec3& point);
 
-	int NDCtoPoint(Math::vec3 NDC);
+	void loadSubData(int count, std::vector<Math::vec4>& pos, std::vector<Math::vec3>& col);
+	void drawToMap(Math::vec4 pos, Math::vec3 col);
+	float calcZ(float x, float y, Math::vec3& normal, const Math::vec3& point);
+
+	int NDCtoPoint(Math::vec4 NDC);
 };

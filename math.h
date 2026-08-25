@@ -2,6 +2,7 @@
 
 #include <string>
 namespace Math {
+	const float PI = 3.1416f;
 	struct vec3
 	{
 		union {
@@ -14,7 +15,7 @@ namespace Math {
 		vec3(float val) : x{ val }, y{ val }, z{ val } {};
 		vec3(float inX,float inY,float inZ) : x{ inX }, y{ inY }, z{ inZ } {};
 
-		float magnitude() 
+		float magnitude() const
 		{
 			return sqrt(x * x + y * y + z * z);
 		}
@@ -24,7 +25,7 @@ namespace Math {
 			return { y * other.z - z * other.y, z * other.x - x * other.z, x * other.y - y * other.x };
 		}
 
-		vec3 normalize()
+		vec3 normalize() const
 		{
 			return vec3 {x, y ,z} / this->magnitude();
 		}
@@ -67,15 +68,25 @@ namespace Math {
 		};
 
 		vec4() : x{}, y{}, z{}, w{} {};
-
+		
 		vec4(float val) : x{ val }, y{ val }, z{ val }, w{ val } {};
 		vec4(float inX, float inY, float inZ, float inW) : x{ inX }, y{ inY }, z{ inZ }, w{ inW } {};
+		vec4(vec3 vec, float inW) : x{ vec.x }, y{ vec.y }, z{ vec.z }, w{ inW } {};
 
+		vec3 xyz()
+		{
+			return { x,y,z };
+		}
 		float magnitude()
 		{
 			return sqrt(x * x + y * y + z * z);
 		}
-
+		vec4 perspectiveDivide()
+		{
+			float newX = x / w;
+			float newY = y / w;
+			return vec4( newX, newY,z , w );
+		}
 		vec4 normalize()
 		{
 			return vec4{ x, y ,z , w} / this->magnitude();
@@ -113,7 +124,7 @@ namespace Math {
 
 	struct mat4
 	{
-		vec4 operator*(const vec4 other) const
+		vec4 operator*(const vec4& other) const
 		{
 			
 			return 
@@ -124,48 +135,117 @@ namespace Math {
 				(other.x * row[3].x + other.y * row[3].y + other.z * row[3].z + row[3].w * other.w)
 			};
 		}
-
-		static mat4 setNewAxis(mat4 start, vec3 normal, vec3 up)
+		mat4 operator*(const mat4& other) const
 		{
-			vec3 newZAxis =  normal.normalize();
-			vec3 newXAxis = up.cross(newZAxis).normalize();
-			vec3 newYAxis = newZAxis.cross(newXAxis);
+			mat4 result{};
+			
+			result.row[0].x = row[0].x * other.row[0].x + row[0].y * other.row[1].x + row[0].z * other.row[2].x + row[0].w * other.row[3].x;
+			result.row[0].y = row[0].x * other.row[0].y + row[0].y * other.row[1].y + row[0].z * other.row[2].y + row[0].w * other.row[3].y;
+			result.row[0].z = row[0].x * other.row[0].z + row[0].y * other.row[1].z + row[0].z * other.row[2].z + row[0].w * other.row[3].z;
+			result.row[0].w = row[0].x * other.row[0].w + row[0].y * other.row[1].w + row[0].z * other.row[2].w + row[0].w * other.row[3].w;
 
-			start.row[0].x = newXAxis.x;
-			start.row[1].x = newXAxis.y;
-			start.row[2].x = newXAxis.z;
+			result.row[1].x = row[1].x * other.row[0].x + row[1].y * other.row[1].x + row[1].z * other.row[2].x + row[1].w * other.row[3].x;
+			result.row[1].y = row[1].x * other.row[0].y + row[1].y * other.row[1].y + row[1].z * other.row[2].y + row[1].w * other.row[3].y;
+			result.row[1].z = row[1].x * other.row[0].z + row[1].y * other.row[1].z + row[1].z * other.row[2].z + row[1].w * other.row[3].z;
+			result.row[1].w = row[1].x * other.row[0].w + row[1].y * other.row[1].w + row[1].z * other.row[2].w + row[1].w * other.row[3].w;
 
-			start.row[0].y = newYAxis.x; //new y axis
-			start.row[1].y = newYAxis.y;
-			start.row[2].y = newYAxis.z;
+			result.row[2].x = row[2].x * other.row[0].x + row[2].y * other.row[1].x + row[2].z * other.row[2].x + row[2].w * other.row[3].x;
+			result.row[2].y = row[2].x * other.row[0].y + row[2].y * other.row[1].y + row[2].z * other.row[2].y + row[2].w * other.row[3].y;
+			result.row[2].z = row[2].x * other.row[0].z + row[2].y * other.row[1].z + row[2].z * other.row[2].z + row[2].w * other.row[3].z;
+			result.row[2].w = row[2].x * other.row[0].w + row[2].y * other.row[1].w + row[2].z * other.row[2].w + row[2].w * other.row[3].w;
 
-			start.row[0].z = newZAxis.x;
-			start.row[1].z = newZAxis.y;
-			start.row[2].z = newZAxis.z;
+			result.row[3].x = row[3].x * other.row[0].x + row[3].y * other.row[1].x + row[3].z * other.row[2].x + row[3].w * other.row[3].x;
+			result.row[3].y = row[3].x * other.row[0].y + row[3].y * other.row[1].y + row[3].z * other.row[2].y + row[3].w * other.row[3].y;
+			result.row[3].z = row[3].x * other.row[0].z + row[3].y * other.row[1].z + row[3].z * other.row[2].z + row[3].w * other.row[3].z;
+			result.row[3].w = row[3].x * other.row[0].w + row[3].y * other.row[1].w + row[3].z * other.row[2].w + row[3].w * other.row[3].w;
+			return result;
+			
+		}
 
-			return start;
+		static mat4 rotateX(mat4& start, float angleRad)
+		{
+			mat4 result = mat4();
+			float sinVal = sin(angleRad);
+			float cosVal = cos(angleRad);
+			result.row[0] = { 1,0,0,0 };
+			result.row[1] = {0,cosVal,-sinVal,0};
+			result.row[2] = {0,sinVal,cosVal,0};
+			result.row[3] = { 0,0,0,1 };
+
+			return start * result;
 
 		}
-		static mat4 translate(mat4 start,vec3 translation)
+		static mat4 rotateY(mat4& start, float angleRad)
+		{
+			mat4 result = mat4();
+			float sinVal = sin(angleRad);
+			float cosVal = cos(angleRad);
+
+			result.row[0] = {cosVal,0,sinVal,0};
+			result.row[1] = {0,1,0,0};
+			result.row[2] = {-sinVal,0,cosVal,0};
+			result.row[3] = {0,0,0,1};
+
+			return start * result;
+		}
+		static mat4 rotateZ(mat4& start, float angleRad)
+		{
+			mat4 result = mat4();
+			float sinVal = sin(angleRad);
+			float cosVal = cos(angleRad);
+			
+			result.row[0] = {cosVal,-sinVal,0,0};
+			result.row[1] = {sinVal,cosVal,0,0};
+			result.row[2] = {0,0,1,0};
+			result.row[3] = { 0,0,0,1 };
+
+			return   start * result;
+		}
+
+		static mat4 perspective(float near, float far, float fovY, float ar)
+		{
+			mat4 result = mat4();
+
+			
+			result.row[0] = {1 / (ar * tan(fovY / 2.0f)), 0, 0, 0};
+			result.row[1] = { 0,1/(tan(fovY/2.0f)), 0, 0};
+			result.row[2] = { 0, 0, -(far + near) / (near - far), -2 * far * near / (near - far) };
+			result.row[3] = { 0, 0, -1.0f, 0 };
+
+			return result;
+		}
+		
+		static mat4 translate(mat4& start,const vec3& translation)
 		{
 			start.row[0].w += translation.x;
 			start.row[1].w += translation.y;
 			start.row[2].w += translation.z;
 			return start;
 		}
-
-	private:
 		vec4 row[4] =
 		{
 		{ 1, 0, 0, 0 },
 		{ 0, 1, 0, 0 },
 		{ 0, 0, 1, 0 },
-		{ 0, 0, 0, 1 } 
+		{ 0, 0, 0, 1 }
 		};
-		
+
 	};
 	static std::string to_string(vec3& vec)
 	{
-		return "(" + std::to_string(vec.x) + "," + std::to_string(vec.y) + "," + std::to_string(vec.z) + "," ")";
+		return "(" + std::to_string(vec.x) + "," + std::to_string(vec.y) + "," + std::to_string(vec.z) + ")";
+	}
+	static std::string to_string(vec4& vec)
+	{
+		return "(" + std::to_string(vec.x) + "," + std::to_string(vec.y) + "," + std::to_string(vec.z) + "," + std::to_string(vec.w) +")" + '\n';
+	}
+	static std::string to_string(mat4 &mat)
+	{
+		std::string result{};
+		for (int i{}; i < 4; i++)
+		{
+			result += to_string(mat.row[i]);
+		}
+		return result;
 	}
 }

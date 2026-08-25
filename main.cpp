@@ -1,32 +1,68 @@
 
 #include "draw.h"
 #include <chrono> 
-const int WIDTH	 = 920;
-const int HEIGHT = 1080;
+const int WIDTH	 = 1000;
+const int HEIGHT = 1000;
 void main() 
 {
 	auto start = std::chrono::high_resolution_clock::now();
 
 	Drawer drawer = Drawer(WIDTH, HEIGHT);
-	std::vector<Math::vec3> posData = { 
-		{-1.0f,0.0f,1.0f},
-		{1.0f,-1.0f,-1.0f},
-		{1.0f,1.0f,-1.0f },
-
-		{-1.0f,-1.0f,0 },
-		{1.0f,-1.0f,0},
-		{0,1.0f,0}
-		
-
+	std::vector<Math::vec3> posData = {
+		//back
+		{-0.5f,-0.5f,-1.5f},{0.5f, -0.5f,-1.5f},{-0.5f,0.5f,-1.5f},
+		{0.5f,-0.5f,-1.5f},{0.5f,0.5f,-1.5f},{-0.5f,0.5f,-1.5f},
+		//front
+		{-0.5f,-0.5f,-0.5f},{0.5f,-0.5f,-0.5f},{-0.5f,0.5f,-0.5f},
+		{0.5f,-0.5f,-0.5f},{0.5f, 0.5f,-0.5f},{-0.5f,0.5f,-0.5f},
+	
+		//left
+		{-0.5f,-0.5f,-1.5f},{-0.5f,-0.5f,-0.5f},{-0.5f,0.5f,-0.5f},
+		{-0.5f,-0.5f,-1.5f},{-0.5f,0.5f,-0.5f},{-0.5f,0.5f,-1.5f},
+		//right
+		{0.5f,-0.5f,-1.5f},{0.5f,-0.5f,-0.5f},{0.5f,0.5f,-0.5f},
+		{0.5f,-0.5f,-1.5f},{0.5f,0.5f,-0.5f},{0.5f,0.5f,-1.5f},
+		//top
+		{-0.5f,0.5f,-1.5f},{0.5f,0.5f,-0.5f},{0.5f,0.5f,-1.5f},
+		{-0.5f,0.5f,-1.5f},{-0.5f,0.5f,-0.5f},{0.5f,0.5f,-0.5f},
+		//bottom
+		{-0.5f,-0.5f,-1.5f},{0.5f,-0.5f,-0.5f},{0.5f,-0.5f,-1.5f},
+		{-0.5f,-0.5f,-1.5f},{-0.5f,-0.5f,-0.5f},{0.5f,-0.5f,-0.5f},
 	};
-	std::vector<Math::vec3> colData = { {255,0,0},{0,255,0},{0,0,255},{255,0,0},{255,0,0},{255,0,0} };
+	std::vector<Math::vec3> colData = { 
+		////back
+		{255,255,100},{255,255,100},{255,255,100},
+		{255,255,100},{255,255,100},{255,255,100},
+		//front
+		{255,100,100},{255,100,100},{255,100,100},
+		{255,100,100},{255,100,100},{255,100,100},
+		
+		//left
+		{255,100,255},{255,100,255},{255,100,255},
+		{255,100,255},{255,100,255},{255,100,255},
+		//right
+		{100,255,100},{100,255,100},{100,255,100},
+		{100,255,100},{100,255,100},{100,255,100},
+		//top
+		{100,255,255},{100,255,255},{100,255,255},
+		{100,255,255},{100,255,255},{100,255,255},
+		//bottom
+		{100,100,255},{100,100,255},{100,100,255},
+		{100,100,255},{100,100,255},{100,100,255},
+	};
 	drawer.SubData(posData, POSITION);
 	drawer.SubData(colData, COLOR);
+	
+	drawer.model = Math::mat4::translate(drawer.model, { 1.0f,1.0,-1.5f });
+	drawer.model = Math::mat4::rotateY(drawer.model, Math::PI  / 4  );
+	drawer.model = Math::mat4::rotateX(drawer.model, -Math::PI / 4);
+	
 
-	drawer.Triangles(6);
+	drawer.projection = Math::mat4::perspective(1.f, 5.0f, Math::PI / 2.f, (float)WIDTH / (float)HEIGHT);
+	drawer.Triangles(6 * 6);
 	drawer.writeImageToBMP("Triangle.bmp");
 	std::cout << drawer.getError() << '\n';
-
+	
 	auto end = std::chrono::high_resolution_clock::now();
 	auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
 	std::cout << "Time taken by code: " << duration.count() << " microseconds" << std::endl;
