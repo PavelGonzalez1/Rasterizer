@@ -25,7 +25,7 @@ enum DataTypes
 };
 struct vertexData
 {
-	float z = -1* std::numeric_limits<int>::max();
+	float z = std::uint32_t(-1);
 	Math::vec3 color;
 };
 

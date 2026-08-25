@@ -18,7 +18,7 @@ void main()
 	
 		//left
 		{-0.5f,-0.5f,-1.5f},{-0.5f,-0.5f,-0.5f},{-0.5f,0.5f,-0.5f},
-		{-0.5f,-0.5f,-1.5f},{-0.5f,0.5f,-0.5f},{-0.5f,0.5f,-1.5f},
+		{-0.5f,-0.5f,-1.5f},{-0.5f,0.5f,-1.5f},{-0.5f,0.5f,-0.5f},
 		//right
 		{0.5f,-0.5f,-1.5f},{0.5f,-0.5f,-0.5f},{0.5f,0.5f,-0.5f},
 		{0.5f,-0.5f,-1.5f},{0.5f,0.5f,-0.5f},{0.5f,0.5f,-1.5f},
@@ -53,12 +53,12 @@ void main()
 	drawer.SubData(posData, POSITION);
 	drawer.SubData(colData, COLOR);
 	
-	drawer.model = Math::mat4::translate(drawer.model, { 1.0f,1.0,-1.5f });
-	drawer.model = Math::mat4::rotateY(drawer.model, Math::PI  / 4  );
-	drawer.model = Math::mat4::rotateX(drawer.model, -Math::PI / 4);
+	drawer.model = Math::mat4::translate(drawer.model, { 1.0f,0.0,-1.5f });
+	drawer.model = Math::mat4::rotateY(drawer.model, Math::PI  / 2 );
+	drawer.model = Math::mat4::rotateX(drawer.model, Math::PI / 4);
 	
 
-	drawer.projection = Math::mat4::perspective(1.f, 5.0f, Math::PI / 2.f, (float)WIDTH / (float)HEIGHT);
+	drawer.projection = Math::mat4::perspective(0.5f, 10.0f, Math::PI / 2.f, (float)WIDTH / (float)HEIGHT);
 	drawer.Triangles(6 * 6);
 	drawer.writeImageToBMP("Triangle.bmp");
 	std::cout << drawer.getError() << '\n';

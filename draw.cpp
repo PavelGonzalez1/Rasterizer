@@ -1,7 +1,6 @@
 
 #include "draw.h"
 
-
 void Drawer::SubData(std::vector<float> data, DataTypes type)
 {
 	if (nextSubData >= MAX_SUBDATA)
@@ -56,7 +55,7 @@ void Drawer::loadSubData(int count,std::vector<Math::vec4>& pos, std::vector<Mat
 			Math::vec4 position = projection * model * Math::vec4( subDatas[posInd][i * 3],subDatas[posInd][i * 3 + 1],subDatas[posInd][i * 3 + 2],1.0f );
 			
 			position = position.perspectiveDivide();
-			
+
 			pos.push_back(position);
 		}
 		
@@ -118,6 +117,27 @@ void Drawer::Points(const int count)
 //
 //	}
 //}
+static bool calcInsideTriangle(const Math::vec4& curPoint, const Math::vec4& position1, const Math::vec4& position2, const Math::vec4& position3, const Math::vec3& normal)
+{
+	//line vec between points
+
+	Math::vec3 lineVec1 = position2.xyz() - position1.xyz();
+	Math::vec3 lineVec2 = position3.xyz() - position2.xyz();
+	Math::vec3 lineVec3 = position1.xyz() - position3.xyz();
+
+	//calculate the perpedicular vector
+
+	Math::vec3 perpLine1 = lineVec1.cross(normal);
+	Math::vec3 perpLine2 = lineVec2.cross(normal);
+	Math::vec3 perpLine3 = lineVec3.cross(normal);
+
+	Math::vec3 testVec1 = curPoint.xyz() - position1.xyz();
+	Math::vec3 testVec2 = curPoint.xyz() - position2.xyz();
+	Math::vec3 testVec3 = curPoint.xyz() - position3.xyz();
+
+	if (testVec1.dot(perpLine1) >= 0 and testVec2.dot(perpLine2) >= 0 and testVec3.dot(perpLine3) >= 0 )return true;
+	return false;
+}
 float Drawer::calcZ(float x, float y,Math::vec3 &normal,const Math::vec3 &point)
 {
 	
@@ -170,9 +190,8 @@ void Drawer::Triangles( int count)
 				float factor3 = lineVec1.cross(lineVec2).magnitude() / 2.0f / wholeArea;
 				
 				// if the percent of every color is greater than 100% the point is outside the triangle
-				if (factor1 + factor2 + factor3 <= 1.0f)
+				if (calcInsideTriangle(curPoint,positionData[i], positionData[i+1], positionData[i+2], normalVec))
 				{
-					curPoint.w = positionData[i].w * factor1 + positionData[i + 1].w * factor2 + positionData[i + 2].w * factor3;
 					Math::vec3 curColor = colorData[i] * factor1 + colorData[i + 1] * factor2 + colorData[i + 2] * factor3;
 					drawToMap(curPoint, curColor);
 				}
@@ -231,7 +250,7 @@ void Drawer::drawToMap(Math::vec4 pos, Math::vec3 col)
 	
 	if (pos.x < -1 or pos.x > 1 or pos.y > 1 or pos.y < -1)return;
 
-	if (pos.z > pixels[NDCtoPoint(pos)].z)
+	if (pos.z <  pixels[NDCtoPoint(pos)].z)
 	{
 		
 		pixels[NDCtoPoint(pos)] = { pos.z,col };

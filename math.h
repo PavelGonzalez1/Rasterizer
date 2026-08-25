@@ -73,7 +73,7 @@ namespace Math {
 		vec4(float inX, float inY, float inZ, float inW) : x{ inX }, y{ inY }, z{ inZ }, w{ inW } {};
 		vec4(vec3 vec, float inW) : x{ vec.x }, y{ vec.y }, z{ vec.z }, w{ inW } {};
 
-		vec3 xyz()
+		vec3 xyz() const
 		{
 			return { x,y,z };
 		}
@@ -209,7 +209,7 @@ namespace Math {
 			
 			result.row[0] = {1 / (ar * tan(fovY / 2.0f)), 0, 0, 0};
 			result.row[1] = { 0,1/(tan(fovY/2.0f)), 0, 0};
-			result.row[2] = { 0, 0, -(far + near) / (near - far), -2 * far * near / (near - far) };
+			result.row[2] = { 0, 0, (far + near) / (near - far), -2 * far * near / (near - far) };
 			result.row[3] = { 0, 0, -1.0f, 0 };
 
 			return result;
