@@ -29,13 +29,13 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="External\qdbmp.h">
-      <Filter>Source Files</Filter>
+    <ClInclude Include="draw.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="math.h">
-      <Filter>Source Files</Filter>
+      <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="draw.h">
+    <ClInclude Include="External\qdbmp.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="External\stb_image.h">
@@ -46,5 +46,10 @@
     <Image Include="Triangle.bmp">
       <Filter>Source Files</Filter>
     </Image>
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="CMakeLists.txt">
+      <Filter>Resource Files</Filter>
+    </Text>
   </ItemGroup>
 </Project>

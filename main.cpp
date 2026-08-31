@@ -1,5 +1,6 @@
 
 #include "draw.h"
+#include "External/stb_image.h"
 #include <chrono> 
 const int WIDTH	 = 1920;
 const int HEIGHT = 1080;
@@ -83,6 +84,9 @@ void main()
 	drawer.model = Math::mat4::translate(drawer.model, { 0.0f,-1.0,-1.5f });
 	drawer.model = Math::mat4::rotateY(drawer.model, -Math::PI / 3);
 	drawer.model = Math::mat4::rotateX(drawer.model, Math::PI / 4);
+	
+	
+	
 	
 
 	drawer.projection = Math::mat4::perspective(0.5f, 10.0f, Math::PI / 2.f, (float)WIDTH / (float)HEIGHT);
