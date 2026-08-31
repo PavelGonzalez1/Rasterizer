@@ -24,6 +24,12 @@ enum DataTypes
 	COLOR,
 	TEXCORD
 };
+
+struct Texture
+{
+	const char* data;
+
+};
 struct vertexData
 {
 	float z = std::uint32_t(-1);
@@ -52,6 +58,8 @@ public:
 
 	Math::mat4 model{};
 	Math::mat4 projection{};
+	const char* textureDiffusion;
+	const char* textureSpecular;
 private:
 
 	const static int MAX_SUBDATA{ 3 };
