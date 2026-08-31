@@ -22,10 +22,11 @@ enum DataTypes
 {
 	POSITION,
 	COLOR,
+	TEXCORD
 };
 struct vertexData
 {
-	float z = -1* std::numeric_limits<int>::max();
+	float z = std::uint32_t(-1);
 	Math::vec3 color;
 };
 
@@ -53,7 +54,7 @@ public:
 	Math::mat4 projection{};
 private:
 
-	const static int MAX_SUBDATA{ 2 };
+	const static int MAX_SUBDATA{ 3 };
 	const int m_height;
 	const int m_width;
 	float drawingPercision;

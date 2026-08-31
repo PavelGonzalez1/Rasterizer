@@ -125,11 +125,13 @@
   <ItemGroup>
     <ClCompile Include="draw.cpp" />
     <ClCompile Include="External\qdbmp.c" />
+    <ClCompile Include="External\stb_image.cpp" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="draw.h" />
     <ClInclude Include="External\qdbmp.h" />
+    <ClInclude Include="External\stb_image.h" />
     <ClInclude Include="math.h" />
   </ItemGroup>
   <ItemGroup>

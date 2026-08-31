@@ -1,7 +1,6 @@
 
 #include "draw.h"
 
-
 void Drawer::SubData(std::vector<float> data, DataTypes type)
 {
 	if (nextSubData >= MAX_SUBDATA)
@@ -56,7 +55,7 @@ void Drawer::loadSubData(int count,std::vector<Math::vec4>& pos, std::vector<Mat
 			Math::vec4 position = projection * model * Math::vec4( subDatas[posInd][i * 3],subDatas[posInd][i * 3 + 1],subDatas[posInd][i * 3 + 2],1.0f );
 			
 			position = position.perspectiveDivide();
-			
+
 			pos.push_back(position);
 		}
 		
@@ -118,6 +117,27 @@ void Drawer::Points(const int count)
 //
 //	}
 //}
+static bool calcInsideTriangle(const Math::vec4& curPoint, const Math::vec4& position1, const Math::vec4& position2, const Math::vec4& position3, const Math::vec3& normal)
+{
+	//line vec between points
+
+	Math::vec3 lineVec1 = position2.xyz() - position1.xyz();
+	Math::vec3 lineVec2 = position3.xyz() - position2.xyz();
+	Math::vec3 lineVec3 = position1.xyz() - position3.xyz();
+
+	//calculate the perpedicular vector
+
+	Math::vec3 perpLine1 = lineVec1.cross(normal);
+	Math::vec3 perpLine2 = lineVec2.cross(normal);
+	Math::vec3 perpLine3 = lineVec3.cross(normal);
+
+	Math::vec3 testVec1 = curPoint.xyz() - position1.xyz();
+	Math::vec3 testVec2 = curPoint.xyz() - position2.xyz();
+	Math::vec3 testVec3 = curPoint.xyz() - position3.xyz();
+
+	if (testVec1.dot(perpLine1) >= 0 and testVec2.dot(perpLine2) >= 0 and testVec3.dot(perpLine3) >= 0 )return true;
+	return false;
+}
 float Drawer::calcZ(float x, float y,Math::vec3 &normal,const Math::vec3 &point)
 {
 	
@@ -130,6 +150,10 @@ float Drawer::calcZ(float x, float y,Math::vec3 &normal,const Math::vec3 &point)
 /// <param name="count">count of verticies</param>
 void Drawer::Triangles( int count)
 {
+	//to compare the w1 and w2 cords to determine the amount of color contributed from each vertex
+	Math::vec3 refPoint1 = { 0.0,0.0,0.0f }; 
+	Math::vec3 refPoint2 = { 1.0,0.0,0.0f };
+	Math::vec3 refPoint3 = { 0.0,1.0,0.0f };
 	std::vector<Math::vec4> positionData;
 	std::vector<Math::vec3> colorData;
 
@@ -148,31 +172,40 @@ void Drawer::Triangles( int count)
 
 		// calculate the normal to calc the area to determine if a point is in the triangle and to find the plane the triangle is in
 		Math::vec3 normalVec = (positionData[i + 2].xyz() - positionData[i].xyz()).cross(positionData[i + 1].xyz() - positionData[i].xyz());
-		
-		float wholeArea = normalVec.magnitude()/2.0f;
 		normalVec = normalVec.normalize(); 
 
+		Math::vec3 triangleLine1 = (positionData[i + 1] - positionData[i]).xyz();
+		Math::vec3 triangleLine2 = (positionData[i + 2] - positionData[i]).xyz();
+		
+		float w1Divisor = (triangleLine1.y) * (triangleLine2.x) - (triangleLine1.x)*(triangleLine2.y);
+		float w1, w2;
+		Math::vec4 curPoint{};
+		Math::vec3 triangleRefLine{};
+		
+
+		
+		Math::vec3 wCords{};
 		for (float y{ startY }; y <= endY; y += drawingPercision)
 		{
 			for (float x{ startX }; x <= endX; x += drawingPercision)
 			{
-				Math::vec4 curPoint = { x,y,calcZ(x,y,normalVec, positionData[i].xyz()) , 1.0};
+				
+				curPoint = { x,y,calcZ(x,y,normalVec, positionData[i].xyz()) , 1.0};
 				//calc the vector from the current point to each vertex
-				
-				Math::vec3 lineVec1 = positionData[i].xyz()   - curPoint.xyz();
-				Math::vec3 lineVec2 = positionData[i+1].xyz() - curPoint.xyz();
-				Math::vec3 lineVec3 = positionData[i+2].xyz() - curPoint.xyz();
-				//then calc the area produced for every combination of two lines (cross product / 2)
-				// the area / wholeArea is the percent of color that point can have
+				triangleRefLine = (curPoint - positionData[i]).xyz();
 
-				float factor1 = lineVec2.cross(lineVec3).magnitude() / 2.0f / wholeArea;
-				float factor2 = lineVec3.cross(lineVec1).magnitude() / 2.0f / wholeArea;
-				float factor3 = lineVec1.cross(lineVec2).magnitude() / 2.0f / wholeArea;
+				w2 = (positionData[i].x * (triangleLine2.y) + triangleRefLine.y * triangleLine2.x - curPoint.x * triangleLine2.y) / w1Divisor;
+				w1 = (curPoint.y - positionData[i].y - w2 * (triangleLine1.y) ) / (triangleLine2.y);
+
 				
-				// if the percent of every color is greater than 100% the point is outside the triangle
-				if (factor1 + factor2 + factor3 <= 1.0f)
+				wCords = { w1,w2,0.f };
+				
+				float factor2 = (refPoint2 - wCords).magnitude();
+				float factor3 = (refPoint3 - wCords).magnitude();
+				float factor1 = 1 - factor2 - factor3;
+				
+				if (w1 >= 0 and w2 >= 0 and w1 + w2 <= 1)
 				{
-					curPoint.w = positionData[i].w * factor1 + positionData[i + 1].w * factor2 + positionData[i + 2].w * factor3;
 					Math::vec3 curColor = colorData[i] * factor1 + colorData[i + 1] * factor2 + colorData[i + 2] * factor3;
 					drawToMap(curPoint, curColor);
 				}
@@ -231,7 +264,7 @@ void Drawer::drawToMap(Math::vec4 pos, Math::vec3 col)
 	
 	if (pos.x < -1 or pos.x > 1 or pos.y > 1 or pos.y < -1)return;
 
-	if (pos.z > pixels[NDCtoPoint(pos)].z)
+	if (pos.z <  pixels[NDCtoPoint(pos)].z)
 	{
 		
 		pixels[NDCtoPoint(pos)] = { pos.z,col };
