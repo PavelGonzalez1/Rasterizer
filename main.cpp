@@ -1,100 +1,62 @@
 
 #include "draw.h"
-#include "External/stb_image.h"
-#include <chrono> 
-const int WIDTH	 = 1920;
-const int HEIGHT = 1080;
-void main() 
+#include "objParser.hpp"
+#include <chrono>
+const int WIDTH	 = 208/2 - 1;
+const int HEIGHT = 65;
+const int FPS = 60;
+
+
+
+
+int main()
 {
-	auto start = std::chrono::high_resolution_clock::now();
-
+    std::string pathToOBJ;
+    
+    std::cout << "drop file and hit enter\n";
+    
+    std::cin >> pathToOBJ;
 	Drawer drawer = Drawer(WIDTH, HEIGHT);
-	std::vector<Math::vec3> posData = {
-		//back
-		{-0.5f,-0.5f,-1.5f},{0.5f, -0.5f,-1.5f},{-0.5f,0.5f,-1.5f},
-		{0.5f,-0.5f,-1.5f},{0.5f,0.5f,-1.5f},{-0.5f,0.5f,-1.5f},
-		//front
-		{-0.5f,-0.5f,-0.5f},{0.5f,-0.5f,-0.5f},{-0.5f,0.5f,-0.5f},
-		{0.5f,-0.5f,-0.5f},{0.5f, 0.5f,-0.5f},{-0.5f,0.5f,-0.5f},
+    
+    std::vector<indexData> index;
+    std::vector<float> positionData, normalData;
+    objParser::parse(pathToOBJ,positionData,normalData,index);
+    drawer.SubData(normalData, NORMAL);
+    drawer.SubData(positionData, POSITION);
+    drawer.dirLight = {0,-0.f,1.f};
+    
 	
-		//left
-		{-0.5f,-0.5f,-1.5f},{-0.5f,-0.5f,-0.5f},{-0.5f,0.5f,-0.5f},
-		{-0.5f,-0.5f,-1.5f},{-0.5f,0.5f,-1.5f},{-0.5f,0.5f,-0.5f},
-		//right
-		{0.5f,-0.5f,-1.5f},{0.5f,-0.5f,-0.5f},{0.5f,0.5f,-0.5f},
-		{0.5f,-0.5f,-1.5f},{0.5f,0.5f,-0.5f},{0.5f,0.5f,-1.5f},
-		//top
-		{-0.5f,0.5f,-1.5f},{0.5f,0.5f,-0.5f},{0.5f,0.5f,-1.5f},
-		{-0.5f,0.5f,-1.5f},{-0.5f,0.5f,-0.5f},{0.5f,0.5f,-0.5f},
-		//bottom
-		{-0.5f,-0.5f,-1.5f},{0.5f,-0.5f,-0.5f},{0.5f,-0.5f,-1.5f},
-		{-0.5f,-0.5f,-1.5f},{-0.5f,-0.5f,-0.5f},{0.5f,-0.5f,-0.5f},
-	};
-	std::vector<Math::vec3> colData = { 
-		////back
-		{255,255,100},{255,255,100},{255,255,100},
-		{255,255,100},{255,255,100},{255,255,100},
-		//front
-		{255,100,100},{255,100,100},{255,100,100},
-		{255,100,100},{255,100,100},{255,100,100},
-		
-		//left
-		{255,100,255},{255,100,255},{255,100,255},
-		{255,100,255},{255,100,255},{255,100,255},
-		//right
-		{100,255,100},{100,255,100},{100,255,100},
-		{100,255,100},{100,255,100},{100,255,100},
-		//top
-		{100,255,255},{100,255,255},{100,255,255},
-		{100,255,255},{100,255,255},{100,255,255},
-		//bottom
-		{100,100,255},{100,100,255},{100,100,255},
-		{100,100,255},{100,100,255},{100,100,255},
-	};
-
-	std::vector<Math::vec3> texData{
-
-		//back
-		{},{},{},
-		{},{},{},
-
-		//front
-		{},{},{},
-		{},{},{},
-
-		//left
-		{},{},{},
-		{},{},{},
-
-		//right
-		{},{},{},
-		{},{},{},
-
-		//top
-		{},{},{},
-		{},{},{},
-
-		//bottom
-		{},{},{},
-		{},{},{}
-	};
-	drawer.SubData(posData, POSITION);
-	drawer.SubData(colData, COLOR);
+    
 	
-	drawer.model = Math::mat4::translate(drawer.model, { 0.0f,-1.0,-1.5f });
-	drawer.model = Math::mat4::rotateY(drawer.model, -Math::PI / 3);
-	drawer.model = Math::mat4::rotateX(drawer.model, Math::PI / 4);
-	
-	
+    
+    
+	drawer.projection = Math::mat4::perspective(1.0f, 25.0f, Math::PI / 2.f, (float)WIDTH / (float)HEIGHT);
+    std::cout << drawer.getError() << '\n';
+    
+    auto start = std::chrono::high_resolution_clock::now();
+    auto frameStart = std::chrono::high_resolution_clock::now();
+    while(true)
+    {
+        auto end = std::chrono::high_resolution_clock::now();
+        auto dt = std::chrono::duration_cast<std::chrono::microseconds>(end - frameStart);
+        auto duration =std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+        if(dt.count() > 1000000/FPS)
+        {
+            drawer.model = Math::mat4();
+            
+            drawer.model = Math::mat4::rotateY(drawer.model, (Math::PI / 5) * duration.count() / 1000000.f);
+            //drawer.model = Math::mat4::rotateX(drawer.model, (Math::PI / 5) * duration.count() / 1000000.f);
+            drawer.model = Math::mat4::translate(drawer.model, { 0.0f,-7.0,-10.5f });
+            //
+            drawer.IndexTriangles(index);
+            drawer.draw();
+            drawer.clear();
+            frameStart = end;
+        }
+        
+    }
 	
 	
 
-	drawer.projection = Math::mat4::perspective(0.5f, 10.0f, Math::PI / 2.f, (float)WIDTH / (float)HEIGHT);
-	drawer.Triangles(6 * 6);
-	drawer.writeImageToBMP("Triangle.bmp");
-	std::cout << drawer.getError() << '\n';
-	
-	auto end = std::chrono::high_resolution_clock::now();
-	auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-	std::cout << "Time taken by code: " << duration.count() << " microseconds" << std::endl;
+    return 0;
 }

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <cmath>
 namespace Math {
 	const float PI = 3.1416f;
 	struct vec3
@@ -17,7 +18,7 @@ namespace Math {
 
 		float magnitude() const
 		{
-			return sqrt(x * x + y * y + z * z);
+			return std::sqrt(x * x + y * y + z * z);
 		}
 
 		vec3 cross(const vec3& other)
@@ -64,7 +65,7 @@ namespace Math {
 	{
 		union {
 			struct { float x, y, z, w; };
-			struct { float r, g, b, w; };
+			struct { float r, g, b, a; };
 		};
 
 		vec4() : x{}, y{}, z{}, w{} {};
@@ -79,13 +80,14 @@ namespace Math {
 		}
 		float magnitude()
 		{
-			return sqrt(x * x + y * y + z * z);
+			return std::sqrt(x * x + y * y + z * z);
 		}
 		vec4 perspectiveDivide()
 		{
 			float newX = x / w;
 			float newY = y / w;
-			return vec4( newX, newY,z , w );
+            float newZ = z / w;
+			return vec4( newX, newY,newZ , w );
 		}
 		vec4 normalize()
 		{
@@ -197,7 +199,7 @@ namespace Math {
 			result.row[0] = {cosVal,-sinVal,0,0};
 			result.row[1] = {sinVal,cosVal,0,0};
 			result.row[2] = {0,0,1,0};
-			result.row[3] = { 0,0,0,1 };
+			result.row[3] = { 0,0,0,1};
 
 			return   start * result;
 		}
@@ -209,7 +211,7 @@ namespace Math {
 			
 			result.row[0] = {1 / (ar * tan(fovY / 2.0f)), 0, 0, 0};
 			result.row[1] = { 0,1/(tan(fovY/2.0f)), 0, 0};
-			result.row[2] = { 0, 0, (far + near) / (near - far), -2 * far * near / (near - far) };
+			result.row[2] = { 0, 0, (far + near) / (near - far), 2 * far * near / (near - far) };
 			result.row[3] = { 0, 0, -1.0f, 0 };
 
 			return result;

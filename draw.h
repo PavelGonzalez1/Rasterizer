@@ -1,39 +1,34 @@
-
+#ifndef draw_h
+#define draw_h
 #include<unordered_map>
 #include<iostream>
 #include<vector>
 #include<array>
 #include<string>
 #include<algorithm>
-
-#include "math.h"
-
-
-extern "C"
-{
-#include"External/qdbmp.h"
-}
-
+#include<cstdint>
+#include "myMath.h"
 
 
 
 
 enum DataTypes
 {
-	POSITION,
-	COLOR,
-	TEXCORD
+    POSITION = 0,
+    COLOR = 1,
+    NORMAL = 2
 };
-
-struct Texture
+struct indexData
 {
-	const char* data;
-
+    unsigned int PosInd;
+    unsigned int NormInd;
 };
 struct vertexData
 {
-	float z = std::uint32_t(-1);
+    float z = 1; // max distance
 	Math::vec3 color;
+    bool real = false;
+    Math::vec3 norm;
 };
 
 class Drawer
@@ -41,7 +36,7 @@ class Drawer
 public:
 	Drawer(int width, int height) :
 		m_height{ height }, m_width{ width },
-		drawingPercision{ 1.0f / (float)std::max(width, height) },
+		drawingPercision{ 1.0f / ((float)std::max(width, height)) },
 		pixels(m_height* m_width )
 	{};
 
@@ -52,14 +47,17 @@ public:
 	void Points(int count);
 	void Lines(int count);
 	void Triangles(int count);
+    void IndexTriangles(std::vector<indexData> &indexArr);
 
+    void clear();
+    void draw();
 	void writeImageToBMP(const char *name);
 	std::string getError();
 
 	Math::mat4 model{};
 	Math::mat4 projection{};
-	const char* textureDiffusion;
-	const char* textureSpecular;
+    Math::vec3 dirLight{};
+    
 private:
 
 	const static int MAX_SUBDATA{ 3 };
@@ -69,14 +67,15 @@ private:
 
 	std::array<std::vector<float>, MAX_SUBDATA> subDatas;
 
-	std::array<DataTypes, MAX_SUBDATA> subDataType;
 	std::string errorMessage;
 	int nextSubData{};
 	std::vector<vertexData> pixels;
 
-	void loadSubData(int count, std::vector<Math::vec4>& pos, std::vector<Math::vec3>& col);
-	void drawToMap(Math::vec4 pos, Math::vec3 col);
-	float calcZ(float x, float y, Math::vec3& normal, const Math::vec3& point);
-
-	int NDCtoPoint(Math::vec4 NDC);
+    float area(Math::vec3& screenPoint1, Math::vec3& screenPoint2,Math::vec3& testPoint);
+	void drawToMap(Math::vec3 &pos, Math::vec3 &col, Math::vec3 &normalVec);
+    void writeTriangle(int posInd, int normInd);
+    Math::vec3 NDCtoPoint(const Math::vec4 &NDC);
+    
+    
 };
+#endif

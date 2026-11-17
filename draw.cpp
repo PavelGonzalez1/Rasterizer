@@ -1,272 +1,209 @@
 
 #include "draw.h"
 
+const char lightMap[] = {'X','.',':','-','=','+','*','%','#','@'};
+
+
 void Drawer::SubData(std::vector<float> data, DataTypes type)
 {
-	if (nextSubData >= MAX_SUBDATA)
-	{
-		errorMessage = "Drawer only supports ";
-		errorMessage += std::to_string(MAX_SUBDATA);
-		errorMessage += " amount of subdata";
-		return;
-	}
-	for (const auto& d: data) subDatas[nextSubData].push_back(d);
-
-	subDataType[nextSubData] = type;
-
-	nextSubData++;
-	
+    for (const auto& d: data) subDatas[type].push_back(d);
 }
 void Drawer::SubData(std::vector<Math::vec3> data, DataTypes type)
 {
-	std::vector<float> newData;
-	for (const auto& d : data)
-	{
-		newData.push_back(d.x);
-		newData.push_back(d.y);
-		newData.push_back(d.z);
-	}
-	SubData(newData, type);
+    
+    std::vector<float> newData;
+    for (const auto& d : data)
+    {
+        newData.push_back(d.x);
+        newData.push_back(d.y);
+        newData.push_back(d.z);
+    }
+    SubData(newData, type);
+    
 }
 
-/// loads intended data into its respective vector
-/// defaults to 0,0,0 if there is an error
-/// could crash everything/ log an error message, but 
-/// this implementation sort of emulates my understanding of openGL
-void Drawer::loadSubData(int count,std::vector<Math::vec4>& pos, std::vector<Math::vec3>& col)
+void Drawer::clear()
 {
-	int posInd = -1;
-	int colInd = -1;
-
-	for (int i{}; i < nextSubData; i++)
-	{
-		if (subDataType[i] == POSITION)
-			posInd = i;
-		else if (subDataType[i] == COLOR)
-			colInd = i;
-	}
-
-	for (int i{}; i < count; i++)
-	{
-		if (posInd == -1 or (i * 3 + 2) >= subDatas[posInd].size())
-			pos.push_back({ 0, 0, 0 ,0});
-		else
-		{
-			Math::vec4 position = projection * model * Math::vec4( subDatas[posInd][i * 3],subDatas[posInd][i * 3 + 1],subDatas[posInd][i * 3 + 2],1.0f );
-			
-			position = position.perspectiveDivide();
-
-			pos.push_back(position);
-		}
-		
-
-		if (colInd == -1 or (i * 3 + 2) >= subDatas[colInd].size())
-			col.push_back({ 255, 255, 255 });
-		else
-			col.push_back({ subDatas[colInd][i * 3],subDatas[colInd][i * 3 + 1],subDatas[colInd][i * 3 + 2] });
-	}
-
-
-
-}
-/// <summary>
-/// sets the pixels of points to the drawer pixel map
-/// </summary>
-/// <param name="count">count of verticies</param>
-void Drawer::Points(const int count)
-{
-	std::vector<Math::vec4> positionData;
-	std::vector<Math::vec3> colorData;
-
-	loadSubData(count, positionData, colorData);
-
-	for (int i{}; i < count; i++)
-	{
-		drawToMap(positionData[i], colorData[i]);
-	}
-}
-/// <summary>
-/// sets the pixels of lines to the drawer pixel map
-/// </summary>
-/// <param name="count">count of verticies</param>
-//void Drawer::Lines(int count)
-//{
-//	std::vector<Math::vec4> positionData;
-//	std::vector<Math::vec3> colorData;
-//
-//	loadSubData(count, positionData, colorData);
-//
-//	
-//	//every 2 points calc the distance and the difference vector  
-//	count -= count % 2;
-//	for (int i{}; i < count; i+=2)
-//	{
-//		Math::vec3 lineVec = positionData[i] - positionData[i + 1];
-//		const float distance = abs(lineVec.magnitude());
-//
-//		for (float j{}; j <  distance; j += drawingPercision)
-//		{
-//			float factor = j/distance ; // percent of color outputed from starting vertex; 
-//			Math::vec3 curColor = colorData[i] * (1.0f - factor) + colorData[i+1] * factor;
-//
-//			Math::vec3 curPoint = positionData[i + 1] + lineVec * factor;
-//
-//
-//			drawToMap(curPoint, curColor);
-//		}
-//
-//	}
-//}
-static bool calcInsideTriangle(const Math::vec4& curPoint, const Math::vec4& position1, const Math::vec4& position2, const Math::vec4& position3, const Math::vec3& normal)
-{
-	//line vec between points
-
-	Math::vec3 lineVec1 = position2.xyz() - position1.xyz();
-	Math::vec3 lineVec2 = position3.xyz() - position2.xyz();
-	Math::vec3 lineVec3 = position1.xyz() - position3.xyz();
-
-	//calculate the perpedicular vector
-
-	Math::vec3 perpLine1 = lineVec1.cross(normal);
-	Math::vec3 perpLine2 = lineVec2.cross(normal);
-	Math::vec3 perpLine3 = lineVec3.cross(normal);
-
-	Math::vec3 testVec1 = curPoint.xyz() - position1.xyz();
-	Math::vec3 testVec2 = curPoint.xyz() - position2.xyz();
-	Math::vec3 testVec3 = curPoint.xyz() - position3.xyz();
-
-	if (testVec1.dot(perpLine1) >= 0 and testVec2.dot(perpLine2) >= 0 and testVec3.dot(perpLine3) >= 0 )return true;
-	return false;
-}
-float Drawer::calcZ(float x, float y,Math::vec3 &normal,const Math::vec3 &point)
-{
-	
-	return (normal.x * (x - point.x) + normal.y * (y - point.y) - normal.z * point.z) / (-normal.z );
-	
+    std::vector<vertexData>(m_height* m_width).swap( pixels);
 }
 /// <summary>
 /// sets the pixels of triangles to the drawer pixel map
 /// </summary>
 /// <param name="count">count of verticies</param>
-void Drawer::Triangles( int count)
+void Drawer::Triangles(int count)
 {
-	//to compare the w1 and w2 cords to determine the amount of color contributed from each vertex
-	Math::vec3 refPoint1 = { 0.0,0.0,0.0f }; 
-	Math::vec3 refPoint2 = { 1.0,0.0,0.0f };
-	Math::vec3 refPoint3 = { 0.0,1.0,0.0f };
-	std::vector<Math::vec4> positionData;
-	std::vector<Math::vec3> colorData;
 
-	loadSubData(count, positionData, colorData);
-
-
-	count -= count % 3;
-	for (int i{}; i < count; i += 3)
-	{
-		//optimization - instead of parsing the entire screen if its the triangle or not it just parses the box around it
-		float startX = std::min(positionData[i].x,std::min(positionData[i + 1].x, positionData[i + 2].x));
-		float startY = std::min(positionData[i].y,std::min(positionData[i + 1].y, positionData[i + 2].y));
-												  
-		float endX = std::max(positionData[i].x,  std::max(positionData[i + 1].x, positionData[i + 2].x));
-		float endY = std::max(positionData[i].y,  std::max(positionData[i + 1].y, positionData[i + 2].y));
-
-		// calculate the normal to calc the area to determine if a point is in the triangle and to find the plane the triangle is in
-		Math::vec3 normalVec = (positionData[i + 2].xyz() - positionData[i].xyz()).cross(positionData[i + 1].xyz() - positionData[i].xyz());
-		normalVec = normalVec.normalize(); 
-
-		Math::vec3 triangleLine1 = (positionData[i + 1] - positionData[i]).xyz();
-		Math::vec3 triangleLine2 = (positionData[i + 2] - positionData[i]).xyz();
-		
-		float w1Divisor = (triangleLine1.y) * (triangleLine2.x) - (triangleLine1.x)*(triangleLine2.y);
-		float w1, w2;
-		Math::vec4 curPoint{};
-		Math::vec3 triangleRefLine{};
-		
-
-		
-		Math::vec3 wCords{};
-		for (float y{ startY }; y <= endY; y += drawingPercision)
-		{
-			for (float x{ startX }; x <= endX; x += drawingPercision)
-			{
-				
-				curPoint = { x,y,calcZ(x,y,normalVec, positionData[i].xyz()) , 1.0};
-				//calc the vector from the current point to each vertex
-				triangleRefLine = (curPoint - positionData[i]).xyz();
-
-				w2 = (positionData[i].x * (triangleLine2.y) + triangleRefLine.y * triangleLine2.x - curPoint.x * triangleLine2.y) / w1Divisor;
-				w1 = (curPoint.y - positionData[i].y - w2 * (triangleLine1.y) ) / (triangleLine2.y);
-
-				
-				wCords = { w1,w2,0.f };
-				
-				float factor2 = (refPoint2 - wCords).magnitude();
-				float factor3 = (refPoint3 - wCords).magnitude();
-				float factor1 = 1 - factor2 - factor3;
-				
-				if (w1 >= 0 and w2 >= 0 and w1 + w2 <= 1)
-				{
-					Math::vec3 curColor = colorData[i] * factor1 + colorData[i + 1] * factor2 + colorData[i + 2] * factor3;
-					drawToMap(curPoint, curColor);
-				}
-
-			}
-		}
-
-	}
+    count -= count % 3;
+    for (int i{}; i < count; i += 3)
+    {
+        writeTriangle(i,i);
+    }
+}
+void Drawer::IndexTriangles(std::vector<indexData> &indexes)
+{
+    for (int i{}; i < indexes.size(); i++)
+    {
+        writeTriangle(indexes[i].PosInd,indexes[i].NormInd);
+    }
 }
 
+float Drawer::area(Math::vec3& screenPoint1, Math::vec3& screenPoint2,Math::vec3& testPoint)
+{
+   return (screenPoint2.x - screenPoint1.x) * (testPoint.y - screenPoint1.y) - (screenPoint2.y - screenPoint1.y) * (testPoint.x - screenPoint1.x);
+}
+
+
+void Drawer::writeTriangle(int posInd, int normInd )
+{
+    const int PositionStride = 3;
+    const int NormalStride = 3;
+
+   
+    Math::vec4 point1,point2,point3;
+    if(subDatas[POSITION].size() > ((posInd+2) * PositionStride+PositionStride-1))
+    {
+        point1 =  projection * model * (Math::vec4){subDatas[POSITION][posInd * PositionStride],subDatas[POSITION][posInd * PositionStride+1],
+            subDatas[POSITION][posInd * PositionStride+2],1.f};
+        if (point1.w <= 1e-4f) return;
+        point1 = point1.perspectiveDivide();
+        
+        point2 = projection * model * (Math::vec4){subDatas[POSITION][(posInd+1) * PositionStride],subDatas[POSITION][(posInd+1) * PositionStride+1],
+            subDatas[POSITION][(posInd+1) * PositionStride+2],1.f};
+        if (point2.w <= 1e-4f) return;
+        point2 = point2.perspectiveDivide();
+        
+        
+        point3 = projection * model * (Math::vec4){subDatas[POSITION][(posInd+2) * PositionStride],subDatas[POSITION][(posInd+2) * PositionStride+1],
+            subDatas[POSITION][(posInd+2)* PositionStride+2],1.f};
+        if (point3.w <= 1e-4f) return;
+        point3 = point3.perspectiveDivide();
+        
+        
+        if((point1.z < 0 & point2.z < 0 & point3.z < 0) || (point1.z > 1 & point2.z > 1 & point3.z > 1) )
+        {
+            return;
+        }
+    }
+    else
+    {
+        return;
+    }
+    Math::vec3 normVec1 , normVec2 , normVec3;
+    if(subDatas[NORMAL].size() > ((normInd+2) * NormalStride+NormalStride-1))
+    {
+        normVec1 = (model * (Math::vec4){subDatas[NORMAL][normInd*NormalStride],subDatas[NORMAL][normInd*NormalStride+1],subDatas[NORMAL][normInd*NormalStride+2],0.f}).xyz();
+        normVec2 = (model * (Math::vec4){subDatas[NORMAL][(normInd+1)*NormalStride],subDatas[NORMAL][(normInd+1)*NormalStride+1],subDatas[NORMAL][(normInd+1)*NormalStride+2],0.f}).xyz();
+        normVec3 = (model * (Math::vec4){subDatas[NORMAL][(normInd+2)*NormalStride],subDatas[NORMAL][(normInd+2)*NormalStride+1],subDatas[NORMAL][(normInd+2)*NormalStride+2],0.f}).xyz();
+    }
+    
+    
+
+    //convert to point screen space
+    float ndcZ[3] = { point1.z,point2.z,point3.z};
+    Math::vec3 sp0 = NDCtoPoint(point1);
+    Math::vec3 sp1 = NDCtoPoint(point2);
+    Math::vec3 sp2 = NDCtoPoint(point3);
+    float a = area(sp0, sp1, sp2);
+    
+    if (a < 1e-8f) return;
+    
+    float invArea = 1.f / a;
+    //optimization - instead of parsing the entire screen if its the triangle or not it just parses the box around it
+    int startX =( std::max(std::min(sp0.x,std::min(sp1.x, sp2.x)),0.f));
+    int startY =( std::max(std::min(sp0.y,std::min(sp1.y, sp2.y)),0.f));
+    int endX =  std::ceil((std::min(std::max(sp0.x,  std::max(sp1.x, sp2.x)),(float)m_width - 1)));
+    int endY =  std::ceil((std::min(std::max(sp0.y,  std::max(sp1.y, sp2.y)),(float)m_height - 1)));
+    
+    
+    
+    Math::vec3 curPoint{};
+    
+
+    
+    Math::vec3 wCords{};
+    float eps = -1.e-4f;
+    for (int y{ startY }; y <= endY; y++)
+    {
+        for (int x{ startX }; x <= endX; x++)
+        {
+            
+            curPoint = { (float)x ,(float)y,0.f};// center the pixel
+            float l0 = area(sp1, sp2, curPoint) * invArea;
+            float l1 = area(sp2, sp0, curPoint) * invArea;
+            float l2 = 1.f - l0 - l1;
+        
+            if (l2 >= eps and l1 >= eps and l0 >= eps )
+            {
+                
+                Math::vec3 curNorm = (normVec1 * l0 + normVec2 * l1 + normVec3 *l2).normalize();
+                Math::vec3 curColor = {}; //not implemented
+                curPoint.z = ndcZ[0] * l0 + ndcZ[1] * l1 + ndcZ[2] * l2;
+                if (curPoint.z >= 0 and curPoint.z < 1.f)
+                {
+                    drawToMap(curPoint, curColor, curNorm);
+                }
+            }
+
+        }
+    }
+
+}
 std::string Drawer::getError()
 {
-	return this->errorMessage;
+    return this->errorMessage;
 }
-
-void Drawer::writeImageToBMP(const char* name)
+Math::vec3 Drawer::NDCtoPoint(const Math::vec4 &NDC)
 {
-	const unsigned short bitDepth = 24;
-
-	BMP* image = BMP_Create(m_width, m_height, bitDepth);
-	for (int y{}; y < m_height; y++)
-	{
-		for (int x{}; x < m_width; x++)
-		{
-			vertexData pixel = pixels[y * m_width + x];
-			BMP_SetPixelRGB(image, x, y, pixel.color.r, pixel.color.g, pixel.color.b);
-		}
-	}
-	
-	
-
-
-	BMP_WriteFile(image, name );
-	BMP_Free(image);
+    float x =( NDC.x + 1.f) / 2.f * (float)m_width;
+    float y =( NDC.y - 1.f) / 2.f * (float)-m_height;
+    
+    return {x,y,0.f};
 }
 
-int Drawer::NDCtoPoint(Math::vec4 NDC)
+void Drawer::drawToMap(Math::vec3 &pos, Math::vec3 &col, Math::vec3 &normalVec)
 {
-	
-	// [-1,1] -> [0,1];
-	float factorX = (NDC.x + (1.0f - drawingPercision)) / 2.0f;
-	float factorY = (NDC.y - (1.0f - drawingPercision)) / -2.0f;
-
-	int posX = m_width * factorX;
-	int posY = m_height * factorY;
-
-	return posX + posY * m_width;
-
-	
+    
+    if (pos.z < pixels[(int)pos.y * m_width + (int)pos.x].z)
+    {
+        pixels[(int)pos.y * m_width + (int)pos.x] = { pos.z,col , true, normalVec};
+    }
 }
-void Drawer::drawToMap(Math::vec4 pos, Math::vec3 col)
-{	
 
-	
-	
-	
-	if (pos.x < -1 or pos.x > 1 or pos.y > 1 or pos.y < -1)return;
-
-	if (pos.z <  pixels[NDCtoPoint(pos)].z)
-	{
-		
-		pixels[NDCtoPoint(pos)] = { pos.z,col };
-	}
+void Drawer::draw()
+{
+    const float ambientLightStrength = 0.3;
+    const float diffusionLightStrength = 0.7;
+    const Math::vec3 lightColor = (Math::vec3){1,1,1}.normalize();
+    
+    std::string frame;
+    frame.reserve(m_width*2 * m_height);
+    frame += "\033[H";
+    
+    for(int y{}; y < m_height; y++)
+    {
+        for(int x{}; x < m_width; x++)
+        {
+            Math::vec3 curNorm = pixels[y*m_width+x].norm.normalize();
+            if(!pixels[y * (m_width) + x].real)
+            {
+                frame += "  ";
+            }
+            else {
+                Math::vec3 lightDirection = dirLight.normalize() * 1;
+                //calculate brightness to determine what char is representing that pixel
+                Math::vec3 ambientLight = lightColor * ambientLightStrength;
+                
+                Math::vec3 diffusionLight = lightColor * diffusionLightStrength * std::max(curNorm.dot(lightDirection),0.f);
+                
+                int lightStrength = (ambientLight + diffusionLight).magnitude() * 10.f;
+                lightStrength = std::min(lightStrength,9);
+                frame += lightMap[(lightStrength)];
+                frame += lightMap[(lightStrength)];
+            }
+            
+        }
+        frame += "\n";
+        
+    }
+    std::cout << frame << std::flush;
 }
