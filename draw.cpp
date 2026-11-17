@@ -1,7 +1,7 @@
 
 #include "draw.h"
 
-const char lightMap[] = {'X','.',':','-','=','+','*','%','#','@'};
+const char lightMap[] = {' ','.',':','-','=','+','*','%','#','@'};
 
 
 void Drawer::SubData(std::vector<float> data, DataTypes type)
@@ -172,7 +172,7 @@ void Drawer::drawToMap(Math::vec3 &pos, Math::vec3 &col, Math::vec3 &normalVec)
 void Drawer::draw()
 {
     const float ambientLightStrength = 0.3;
-    const float diffusionLightStrength = 0.7;
+    const float diffusionLightStrength = 0.5;
     const Math::vec3 lightColor = (Math::vec3){1,1,1}.normalize();
     
     std::string frame;
@@ -189,7 +189,7 @@ void Drawer::draw()
                 frame += "  ";
             }
             else {
-                Math::vec3 lightDirection = dirLight.normalize() * 1;
+                Math::vec3 lightDirection = dirLight.normalize() * -1;
                 //calculate brightness to determine what char is representing that pixel
                 Math::vec3 ambientLight = lightColor * ambientLightStrength;
                 
@@ -205,5 +205,5 @@ void Drawer::draw()
         frame += "\n";
         
     }
-    std::cout << frame << std::flush;
+    std::cout << frame;
 }
